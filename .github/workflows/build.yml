@@ -45,6 +45,9 @@ jobs:
           python3 scripts/patch_occupancy.py upstream
           install -Dm644 patches/MixedMoveRecovery.java upstream/app/src/main/java/com/opencheps/vision/MixedMoveRecovery.java
           python3 scripts/patch_streaming.py upstream
+          install -Dm644 patches/browser-bridge/BrowserHintView.java upstream/app/src/main/java/com/opencheps/bridge/BrowserHintView.java
+          install -Dm644 patches/browser-bridge/BrowserBridgeService.java upstream/app/src/main/java/com/opencheps/bridge/BrowserBridgeService.java
+          python3 scripts/patch_browser_bridge.py upstream
           grep -n 'FLAG_SECURE' upstream/app/src/main/java/com/opencheps/overlay/{OverlayService,FloatingPanel}.java
           grep -n 'getLocationOnScreen\|recalibrate if persistent\|lastPvs' upstream/app/src/main/java/com/opencheps/{overlay/ArrowOverlayView,capture/ScreenCaptureService}.java
 
