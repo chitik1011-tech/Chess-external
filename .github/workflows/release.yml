@@ -1,0 +1,47 @@
+name: Publish Chess External APK to Releases
+
+on:
+  push:
+    branches: [ main ]
+    paths: [ '.github/workflows/release.yml' ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: v0.1.0-beta.1
+      APK_BUILD_RUN: 43937134795
+    steps:
+      - name: Download verified APK artifact from successful build
+        run: |
+          set -euo pipefail
+          gh run view "$APK_BUILD_RUN" --repo "$GITHUB_REPOSITORY" --json conclusion --jq '.conclusion' | grep -qx success
+          mkdir -p release-apk
+          gh run download "$APK_BUILD_RUN" --repo "$GITHUB_REPOSITORY" --name Chess-External-arm64-debug --dir release-apk
+          find release-apk -type f -name '*.apk' -print
+          find release-apk -type f -name '*.apk' -print -quit | grep -q apk
+          APK="$(find release-apk -type f -name '*.apk' | head -n 1)"
+          cp "$APK" release-apk/Chess-External-arm64-debug.apk
+          sha256sum release-apk/Chess-External-arm64-debug.apk
+
+      - name: Publish prerelease with APK
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" release-apk/Chess-External-arm64-debug.apk --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$RELEASE_TAG" release-apk/Chess-External-arm64-debug.apk \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "Chess External v0.1.0 beta (Android ARM64)" \
+              --prerelease \
+              --notes "Test build for Android ARM64. Includes Stockfish 19 and an OpenCheps-based screen overlay with FLAG_SECURE. Known issues: stale arrows can remain after a position change; board bounding box can be misaligned; piece recognition is experimental. The secure overlay may black out screenshots or recording rather than staying invisibly transparent. Do not rely on it in live games against humans. Original OpenCheps is MIT-licensed; Stockfish is GPL-3.0."
+          fi
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json url,assets
