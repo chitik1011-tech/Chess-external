@@ -1,0 +1,63 @@
+name: Publish Chess External APK to Releases
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/publish-release.yml'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: v0.1.0
+      SOURCE_RUN: "43937134795"
+      SOURCE_SHA256: c0e56fbb011cc0ae9ae57cdbd19bc78d27c58f0fe854c2e26ce9b63d2eed1e91
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download verified, already-built ARM64 APK
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          gh run download "$SOURCE_RUN" -R "$GITHUB_REPOSITORY" -n Chess-External-arm64-debug -D artifacts
+          test -s artifacts/app-arm64-v8a-debug.apk
+          echo "$SOURCE_SHA256  artifacts/app-arm64-v8a-debug.apk" | sha256sum -c -
+          cp artifacts/app-arm64-v8a-debug.apk "Chess-External-v0.1.0-arm64.apk"
+          ls -lh "Chess-External-v0.1.0-arm64.apk"
+
+      - name: Create GitHub Release and attach APK
+        run: |
+          set -euo pipefail
+          cat > /tmp/release-notes.md <<'EOF'
+          Android ARM64 debug APK based on OpenCheps (MIT), with official Stockfish 19 and secure overlay flags.
+
+          - Android 8+ (minSdk 26); built for ARM64 devices.
+          - Chessboard recognition, Stockfish analysis and floating arrows.
+          - Overlay windows have Android FLAG_SECURE. Screen recording behavior depends on firmware and may cause black regions.
+          - Not tested on the target OnePlus / ColorOS device. This is an experimental debug build, not a production release.
+          - Root is not required for the standard overlay + MediaProjection implementation.
+          - The random move-quality feature from the browser extension is not included.
+
+          Source build: https://github.com/chitik1011-tech/Chess-external/actions/runs/43937134795
+          EOF
+          if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" "Chess-External-v0.1.0-arm64.apk" -R "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$TAG" "Chess-External-v0.1.0-arm64.apk" \
+              -R "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "Chess External v0.1.0 — Android ARM64" \
+              --notes-file /tmp/release-notes.md \
+              --latest
+          fi
+          gh release view "$TAG" -R "$GITHUB_REPOSITORY" --json url,assets -q '{url: .url, assets: [.assets[].name]}'
