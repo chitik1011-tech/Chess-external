@@ -16,8 +16,8 @@ jobs:
     timeout-minutes: 15
     env:
       GH_TOKEN: ${{ github.token }}
-      RELEASE_TAG: v0.1.3-beta.1
-      APK_BUILD_RUN: 43944093339
+      RELEASE_TAG: v0.1.4-beta.1
+      APK_BUILD_RUN: 43949017698
     steps:
       - name: Download verified APK artifact from successful build
         run: |
@@ -40,8 +40,8 @@ jobs:
             gh release create "$RELEASE_TAG" release-apk/Chess-External-arm64-debug.apk \
               --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" \
-              --title "Chess External v0.1.3 beta — highlight-safe board recognition (ARM64)" \
+              --title "Chess External v0.1.4 beta — occupancy-based move reconstruction (ARM64)" \
               --prerelease \
-              --notes "Chess External v0.1.3 beta (Android ARM64). Fixes: classify piece shapes with normalized luminance instead of raw cell brightness so yellow move highlights are less likely to trigger false changes; stabilize detected board position across frames; retain two-move recovery and stale-arrow safety. Pure Java image-shape tests and Android Gradle assembly passed. Stockfish 19 included. Limitations: recognition still depends on chess theme and calibration; not yet verified on user's device; only two quiet moves can be recovered; custom shapes, captures, castling, and promotion may need recalibration. Secure-overlay behavior varies by Android firmware and cannot guarantee invisible screen recording. May need to uninstall old debug APK if signing differs. OpenCheps MIT; Stockfish GPL-3.0. For study, bots, and permitted analysis."
+              --notes "Chess External v0.1.4 beta (Android ARM64). Fixes: new occupancy-based board recognition measures foreground silhouettes against each square's own background; it handles highlighted yellow squares and bypasses noisy piece-class errors that produced 'Position unclear · 10 changed'. Validates one or two QUIET moves and clears old arrows; ambiguous/illegal detections remain blocked. Java tests cover 1.e4 d5, black orientation and synthetic highlighted boards; Android Gradle build passed. Stockfish 19 included. Limitations: requires prior starting-position calibration; captures, castling, promotion, ambiguous occupancy and other complex sequences may still require manual recalibration. Real-device validation pending. Secure-overlay behavior varies by Android firmware; this does not guarantee a clean screenshot or recording. Intended for offline study, bots and permitted analysis. OpenCheps MIT; Stockfish GPL-3.0."
           fi
           gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json url,assets
