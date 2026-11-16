@@ -3,6 +3,7 @@ package android.graphics;
 public abstract class Bitmap {
     public abstract int getWidth();
     public abstract int getHeight();
+    public abstract int getPixel(int x,int y);
     public abstract void getPixels(int[] pixels, int offset, int stride,
                                    int x, int y, int width, int height);
 }
