@@ -33,10 +33,12 @@ jobs:
           git -C upstream checkout --detach "$UPSTREAM_COMMIT"
           test "$(git -C upstream rev-parse HEAD)" = "$UPSTREAM_COMMIT"
 
-      - name: Patch both overlay windows
+      - name: Patch overlay privacy and verify position-safe arrows
         run: |
           python3 scripts/apply_privacy.py upstream
+          python3 scripts/patch_runtime.py upstream
           grep -n 'FLAG_SECURE' upstream/app/src/main/java/com/opencheps/overlay/{OverlayService,FloatingPanel}.java
+          grep -n 'getLocationOnScreen\|recalibrate if persistent\|lastPvs' upstream/app/src/main/java/com/opencheps/{overlay/ArrowOverlayView,capture/ScreenCaptureService}.java
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
