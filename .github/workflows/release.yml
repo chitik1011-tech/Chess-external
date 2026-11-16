@@ -16,8 +16,8 @@ jobs:
     timeout-minutes: 15
     env:
       GH_TOKEN: ${{ github.token }}
-      RELEASE_TAG: v0.1.5-beta.1
-      APK_BUILD_RUN: 43954943328
+      RELEASE_TAG: v0.2.0-browser-beta.1
+      APK_BUILD_RUN: 43972652649
     steps:
       - name: Download verified APK artifact from successful build
         run: |
@@ -40,8 +40,8 @@ jobs:
             gh release create "$RELEASE_TAG" release-apk/Chess-External-arm64-debug.apk \
               --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" \
-              --title "Chess External v0.1.5 beta — async Stockfish and capture recovery (ARM64)" \
+              --title "Chess External v0.2.0 beta — native browser bridge overlay (ARM64)" \
               --prerelease \
-              --notes "Chess External v0.1.5 beta (Android ARM64). Main fix: Stockfish analysis now runs asynchronously on its own HandlerThread, preventing 1500ms think time from blocking MediaProjection sampling. Captured positions are checked with exact one/two legal-move replay including normal captures (example Nxg5 f6). Spurious classifier changes no longer reset Stockfish and make hints flicker/recompute; cached analysis is reused after position stabilizes. Java regression tests and full Android build succeeded. Stockfish 19 included. Limitations: not yet tested on the user's Android device. More than two missed moves, inaccurate piece recognition, castling, en-passant, promotions and complex captures can still leave Position unclear. On-screen arrow exclusion from recordings is NOT guaranteed with FLAG_SECURE. Intended for offline study, bot play and permitted analysis. OpenCheps MIT, Stockfish GPL-3.0."
+              --notes "Chess External v0.2.0 browser bridge beta (Android ARM64). NEW: optional native companion for the Chess Board Trainer v0.9 browser extension. When enabled in the app, a local authenticated HTTP server listens ONLY on 127.0.0.1:8765 and receives engine-suggested move, board geometry, color orientation, arrow/neon mode, and quality percentage directly from the extension, without MediaProjection or camera. User can copy a 12-digit pairing code and adjust Y-offset alignment in the app. A board-sized TYPE_APPLICATION_OVERLAY with FLAG_SECURE renders hints outside the web page. The previous screen-recognition mode remains available. IMPORTANT: the browser extension ZIP is a SEPARATE download; browser integration requires it, this APK alone does not read browser DOM. FLAG_SECURE does NOT guarantee clean recordings: some Android builds black out the protected region or screen. Android CI assembly succeeded; untested on a real OnePlus/ColorOS 15. Experimental beta for study, bot play and permitted analysis. OpenCheps MIT, Stockfish GPL-3.0."
           fi
           gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json url,assets
