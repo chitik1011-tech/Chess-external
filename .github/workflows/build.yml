@@ -40,6 +40,9 @@ jobs:
           install -Dm644 patches/MissedMoveRecovery.java upstream/app/src/main/java/com/opencheps/vision/MissedMoveRecovery.java
           python3 scripts/patch_recovery.py upstream
           python3 scripts/patch_classifier.py upstream
+          install -Dm644 patches/OccupancyRecovery.java upstream/app/src/main/java/com/opencheps/vision/OccupancyRecovery.java
+          install -Dm644 patches/ForegroundOccupancy.java upstream/app/src/main/java/com/opencheps/vision/ForegroundOccupancy.java
+          python3 scripts/patch_occupancy.py upstream
           grep -n 'FLAG_SECURE' upstream/app/src/main/java/com/opencheps/overlay/{OverlayService,FloatingPanel}.java
           grep -n 'getLocationOnScreen\|recalibrate if persistent\|lastPvs' upstream/app/src/main/java/com/opencheps/{overlay/ArrowOverlayView,capture/ScreenCaptureService}.java
 
@@ -59,6 +62,16 @@ jobs:
             upstream/app/src/main/java/com/opencheps/vision/SquareSampler.java \
             tests/java/com/opencheps/vision/SquareSamplerTest.java
           java -cp /tmp/chess-test-classes com.opencheps.vision.SquareSamplerTest
+          javac -d /tmp/chess-test-classes \
+            patches/MissedMoveRecovery.java patches/OccupancyRecovery.java \
+            tests/java/com/opencheps/vision/OccupancyRecoveryTest.java
+          java -cp /tmp/chess-test-classes com.opencheps.vision.OccupancyRecoveryTest
+          javac -d /tmp/chess-test-classes \
+            tests/java/android/graphics/Bitmap.java \
+            tests/java/com/opencheps/vision/BoardDetector.java \
+            patches/ForegroundOccupancy.java \
+            tests/java/com/opencheps/vision/ForegroundOccupancyTest.java
+          java -cp /tmp/chess-test-classes com.opencheps.vision.ForegroundOccupancyTest
 
       - name: Configure Android SDK from GitHub runner
         run: |
