@@ -2,6 +2,7 @@
 // Native SurfaceComposer skipScreenshot, not an APK and not a guaranteed
 // invisible capture on every OEM. Uses only local 127.0.0.1:8765.
 #include "GraphicsManager.h"
+#include "board_alignment.h"
 #include "native_surface/ANativeWindowCreator.h"
 #include "imgui.h"
 #include <algorithm>
@@ -33,6 +34,8 @@ std::atomic<int> serverFd{-1};
 std::mutex lock;
 std::string secret;
 int port=8765,yOffset=0;
+// Requested calibration for the board drawn two ranks too high on ColorOS.
+float ySquares=2.f;
 bool demo=false;
 struct Data {
  std::string move,mode="arrow",effect,lastEffectMove;
@@ -239,7 +242,9 @@ void help(){
  std::puts("Chess Root ImGui — Android ARM64 root executable");
  std::puts("  --token 12hex      Pairing code (otherwise generated)");
  std::puts("  --port 8765        Local browser bridge port");
- std::puts("  --y-offset 130     Move overlay down in SCREEN pixels");
+ std::puts("  --y-offset 140     Fine adjustment in physical screen pixels");
+ std::puts("  --y-squares 2      Shift board DOWN by 2 board squares (default)");
+ std::puts("  --y-squares 0      Restore the old v0.4.1 alignment");
  std::puts("  --demo             Persistent sample neon arrow for testing");
  std::puts("  --help             Display this help");
 }
@@ -253,6 +258,15 @@ int main(int argc,char** argv){
    if(a=="--token"&&i+1<argc){secret=argv[++i];continue;}
    if(a=="--port"&&i+1<argc){port=std::atoi(argv[++i]);continue;}
    if(a=="--y-offset"&&i+1<argc){yOffset=std::atoi(argv[++i]);continue;}
+   if(a=="--y-squares"&&i+1<argc){
+    char* end=nullptr;
+    const char* val=argv[++i];
+    ySquares=std::strtof(val,&end);
+    if(end==val||*end!='\\0'||!std::isfinite(ySquares)||ySquares < -8.f||ySquares > 8.f){
+     std::fprintf(stderr,"--y-squares must be between -8 and 8\\n");return 2;
+    }
+    continue;
+   }
    std::fprintf(stderr,"Unknown argument: %s\n",a.c_str());return 2;
   }
   if(!secret.empty()&&!validCode(secret)){std::fprintf(stderr,"Bad token: 12 lowercase hex required\n");return 2;}
@@ -263,6 +277,8 @@ int main(int argc,char** argv){
  std::signal(SIGTERM,signalHandler);std::signal(SIGINT,signalHandler);
  std::printf("Chess Root ImGui | PID %d | pairing code: %s\n",getpid(),secret.c_str());
  std::printf("skipScreenshot requested; OEM may show black region in recordings.\n");
+ std::printf("Alignment: %+0.2f squares vertically + %d physical pixels (positive = DOWN).\\n",
+             ySquares,yOffset);
  std::fflush(stdout);
  auto display=android::ANativeWindowCreator::GetDisplayInfo();
  if(display.width<200||display.height<200){std::fprintf(stderr,"SurfaceComposer ABI incompatible with this ROM\n");return 5;}
@@ -288,13 +304,12 @@ int main(int argc,char** argv){
   bool fx=!f.effect.empty()&&now-f.effectAt<2100;
   bool wanted=(fresh&&!f.move.empty())||fx;
   if(wanted&&f.viewportW>100&&f.width>100){
-   float ratio=display.width/f.viewportW;
-   float physicalWidth=std::clamp(f.width*ratio,100.f,(float)display.width);
-   float scale=physicalWidth/SIZE;
-   int x=std::clamp((int)std::lround(f.x*ratio),0,display.width-80);
-   int y=std::clamp((int)std::lround(f.y*ratio)+yOffset,0,display.height-80);
-   android::ANativeWindowCreator::SetLayerGeometry(surface,SIZE,SIZE,scale);
-   android::ANativeWindowCreator::SetPosition(surface,x,y);
+   const auto placement = chessroot::placeBoard(
+       display.width, display.height, f.viewportW,
+       f.x, f.y, f.width, yOffset, ySquares);
+   android::ANativeWindowCreator::SetLayerGeometry(surface,SIZE,SIZE,
+                                                    placement.surfaceScale);
+   android::ANativeWindowCreator::SetPosition(surface,placement.left,placement.top);
    showing=true;
   }else if(showing){android::ANativeWindowCreator::SetPosition(surface,-3000,-3000);showing=false;}
   gfx->NewFrame(false);
