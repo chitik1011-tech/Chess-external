@@ -48,6 +48,12 @@ jobs:
           install -Dm644 patches/browser-bridge/BrowserHintView.java upstream/app/src/main/java/com/opencheps/bridge/BrowserHintView.java
           install -Dm644 patches/browser-bridge/BrowserBridgeService.java upstream/app/src/main/java/com/opencheps/bridge/BrowserBridgeService.java
           python3 scripts/patch_browser_bridge.py upstream
+          install -Dm644 patches/imgui/BrowserImGuiView.java upstream/app/src/main/java/com/opencheps/bridge/BrowserImGuiView.java
+          install -Dm644 patches/imgui/NativeChessImGui.cpp upstream/app/src/main/cpp/NativeChessImGui.cpp
+          install -Dm644 patches/imgui/CMakeLists.txt upstream/app/src/main/cpp/CMakeLists.txt
+          python3 scripts/patch_imgui.py upstream
+          git clone --depth 1 --branch v1.93.0 https://github.com/ocornut/imgui.git upstream/app/src/main/cpp/vendor/imgui
+          test "$(git -C upstream/app/src/main/cpp/vendor/imgui rev-parse HEAD)" = "c1aaac65e896a45f81f47a4d68f9959e0f86c859"
           grep -n 'FLAG_SECURE' upstream/app/src/main/java/com/opencheps/overlay/{OverlayService,FloatingPanel}.java
           grep -n 'getLocationOnScreen\|recalibrate if persistent\|lastPvs' upstream/app/src/main/java/com/opencheps/{overlay/ArrowOverlayView,capture/ScreenCaptureService}.java
 
@@ -90,7 +96,7 @@ jobs:
           test -x "$SDKMANAGER"
           echo "Using $SDKMANAGER"
           yes | "$SDKMANAGER" --licenses >/dev/null || true
-          "$SDKMANAGER" --install 'platforms;android-34' 'build-tools;34.0.0' 'platform-tools'
+          "$SDKMANAGER" --install 'platforms;android-34' 'build-tools;34.0.0' 'platform-tools' 'ndk;27.2.12479018' 'cmake;3.22.1'
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v3
