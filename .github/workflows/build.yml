@@ -37,6 +37,8 @@ jobs:
         run: |
           python3 scripts/apply_privacy.py upstream
           python3 scripts/patch_runtime.py upstream
+          install -Dm644 patches/MissedMoveRecovery.java upstream/app/src/main/java/com/opencheps/vision/MissedMoveRecovery.java
+          python3 scripts/patch_recovery.py upstream
           grep -n 'FLAG_SECURE' upstream/app/src/main/java/com/opencheps/overlay/{OverlayService,FloatingPanel}.java
           grep -n 'getLocationOnScreen\|recalibrate if persistent\|lastPvs' upstream/app/src/main/java/com/opencheps/{overlay/ArrowOverlayView,capture/ScreenCaptureService}.java
 
@@ -45,6 +47,12 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+
+      - name: Test safe two-move recovery logic
+        run: |
+          mkdir -p /tmp/chess-test-classes
+          javac -d /tmp/chess-test-classes patches/MissedMoveRecovery.java tests/java/MissedMoveRecoveryTest.java
+          java -cp /tmp/chess-test-classes com.opencheps.vision.MissedMoveRecoveryTest
 
       - name: Configure Android SDK from GitHub runner
         run: |
