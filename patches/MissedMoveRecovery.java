@@ -11,6 +11,32 @@ package com.opencheps.vision;
 public final class MissedMoveRecovery {
     private MissedMoveRecovery() {}
 
+    /** Validate one quiet move using geometry and king-safety checks. */
+    public static boolean matchesOneQuietMove(
+            char[][] before, char[][] after, boolean whiteToMove, boolean whiteBottom) {
+        if (!validShape(before) || !validShape(after)) return false;
+        int[] from = null, to = null;
+        int changes = 0;
+        for (int r=0; r<8; r++) for (int c=0; c<8; c++) {
+            char a = normalized(before[r][c]), b = normalized(after[r][c]);
+            if (a == b) continue;
+            if (++changes > 2) return false;
+            if (a != '.' && b == '.') {
+                if (from != null) return false;
+                from = new int[]{r,c};
+            } else if (a == '.' && b != '.') {
+                if (to != null) return false;
+                to = new int[]{r,c};
+            } else return false;
+        }
+        if (changes != 2 || from == null || to == null) return false;
+        char moving = normalized(before[from[0]][from[1]]);
+        if (Character.isUpperCase(moving) != whiteToMove
+                || moving != normalized(after[to[0]][to[1]])) return false;
+        char[][] mid = copy(before);
+        return playQuiet(mid,from,to,whiteToMove,whiteBottom) && equal(mid,after);
+    }
+
     public static boolean matchesTwoQuietMoves(
             char[][] before, char[][] after, boolean whiteToMove, boolean whiteBottom) {
         if (!validShape(before) || !validShape(after)) return false;
