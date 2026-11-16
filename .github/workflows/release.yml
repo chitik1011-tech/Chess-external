@@ -16,8 +16,8 @@ jobs:
     timeout-minutes: 15
     env:
       GH_TOKEN: ${{ github.token }}
-      RELEASE_TAG: v0.1.4-beta.1
-      APK_BUILD_RUN: 43949017698
+      RELEASE_TAG: v0.1.5-beta.1
+      APK_BUILD_RUN: 43954943328
     steps:
       - name: Download verified APK artifact from successful build
         run: |
@@ -40,8 +40,8 @@ jobs:
             gh release create "$RELEASE_TAG" release-apk/Chess-External-arm64-debug.apk \
               --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" \
-              --title "Chess External v0.1.4 beta — occupancy-based move reconstruction (ARM64)" \
+              --title "Chess External v0.1.5 beta — async Stockfish and capture recovery (ARM64)" \
               --prerelease \
-              --notes "Chess External v0.1.4 beta (Android ARM64). Fixes: new occupancy-based board recognition measures foreground silhouettes against each square's own background; it handles highlighted yellow squares and bypasses noisy piece-class errors that produced 'Position unclear · 10 changed'. Validates one or two QUIET moves and clears old arrows; ambiguous/illegal detections remain blocked. Java tests cover 1.e4 d5, black orientation and synthetic highlighted boards; Android Gradle build passed. Stockfish 19 included. Limitations: requires prior starting-position calibration; captures, castling, promotion, ambiguous occupancy and other complex sequences may still require manual recalibration. Real-device validation pending. Secure-overlay behavior varies by Android firmware; this does not guarantee a clean screenshot or recording. Intended for offline study, bots and permitted analysis. OpenCheps MIT; Stockfish GPL-3.0."
+              --notes "Chess External v0.1.5 beta (Android ARM64). Main fix: Stockfish analysis now runs asynchronously on its own HandlerThread, preventing 1500ms think time from blocking MediaProjection sampling. Captured positions are checked with exact one/two legal-move replay including normal captures (example Nxg5 f6). Spurious classifier changes no longer reset Stockfish and make hints flicker/recompute; cached analysis is reused after position stabilizes. Java regression tests and full Android build succeeded. Stockfish 19 included. Limitations: not yet tested on the user's Android device. More than two missed moves, inaccurate piece recognition, castling, en-passant, promotions and complex captures can still leave Position unclear. On-screen arrow exclusion from recordings is NOT guaranteed with FLAG_SECURE. Intended for offline study, bot play and permitted analysis. OpenCheps MIT, Stockfish GPL-3.0."
           fi
           gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json url,assets
