@@ -16,8 +16,8 @@ jobs:
     timeout-minutes: 15
     env:
       GH_TOKEN: ${{ github.token }}
-      RELEASE_TAG: v0.2.0-browser-beta.1
-      APK_BUILD_RUN: 43972652649
+      RELEASE_TAG: v0.3.0-imgui-beta.1
+      APK_BUILD_RUN: 43976888091
     steps:
       - name: Download verified APK artifact from successful build
         run: |
@@ -40,8 +40,8 @@ jobs:
             gh release create "$RELEASE_TAG" release-apk/Chess-External-arm64-debug.apk \
               --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" \
-              --title "Chess External v0.2.0 beta — native browser bridge overlay (ARM64)" \
+              --title "Chess External v0.3.0 beta — real Dear ImGui + OpenGL ES3 overlay (ARM64)" \
               --prerelease \
-              --notes "Chess External v0.2.0 browser bridge beta (Android ARM64). NEW: optional native companion for the Chess Board Trainer v0.9 browser extension. When enabled in the app, a local authenticated HTTP server listens ONLY on 127.0.0.1:8765 and receives engine-suggested move, board geometry, color orientation, arrow/neon mode, and quality percentage directly from the extension, without MediaProjection or camera. User can copy a 12-digit pairing code and adjust Y-offset alignment in the app. A board-sized TYPE_APPLICATION_OVERLAY with FLAG_SECURE renders hints outside the web page. The previous screen-recognition mode remains available. IMPORTANT: the browser extension ZIP is a SEPARATE download; browser integration requires it, this APK alone does not read browser DOM. FLAG_SECURE does NOT guarantee clean recordings: some Android builds black out the protected region or screen. Android CI assembly succeeded; untested on a real OnePlus/ColorOS 15. Experimental beta for study, bot play and permitted analysis. OpenCheps MIT, Stockfish GPL-3.0."
+              --notes "Chess External v0.3.0 ImGui browser bridge beta for Android ARM64. REAL Dear ImGui v1.93.0 + OpenGL ES3 native rendering through C++ JNI, NOT Android Canvas. Displays native translucent overlay with neon source/target squares, arrow, percentage badge, and capture/check/mate particle effects. Uses loopback browser bridge on 127.0.0.1:8765 with pairing code; browser extension v0.9.1 ZIP separately required. Fixed browser CORS/private-network OPTIONS preflight handling. The Android APK CI build passed with explicit checks that libchessimgui.so AND libstockfish.so are present inside the ARM64 APK. Browser extension v0.9.1 includes mobile settings scrolling and clearer localhost connection diagnostics. FLAG_SECURE cannot guarantee the overlay will disappear cleanly in screen recording; some recorders show a black box. Not yet validated on ColorOS 15/Titanium. Suitable for offline practice, bot matches and permitted analysis. Upstream OpenCheps MIT, Stockfish GPL-3.0, Dear ImGui MIT."
           fi
           gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json url,assets
