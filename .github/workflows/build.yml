@@ -1,0 +1,85 @@
+name: Build Chess External APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/build.yml'
+      - 'scripts/**'
+      - 'tests/**'
+
+permissions:
+  contents: read
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      UPSTREAM_COMMIT: b1eadc58d8dcf96f84976ccf49ac6d3c1be2ccc0
+      SF19_ARM64_SHA: ebb24051aa4a222b4daaf049b882ecf1163d370c128fe02316602643f4d5e426
+
+    steps:
+      - name: Checkout build scripts
+        uses: actions/checkout@v4
+
+      - name: Run privacy patch tests
+        run: python3 -m unittest discover -s tests -v
+
+      - name: Get pinned OpenCheps source
+        run: |
+          git clone https://github.com/Sethdsai/opencheps.git upstream
+          git -C upstream checkout --detach "$UPSTREAM_COMMIT"
+          test "$(git -C upstream rev-parse HEAD)" = "$UPSTREAM_COMMIT"
+
+      - name: Patch both overlay windows
+        run: |
+          python3 scripts/apply_privacy.py upstream
+          grep -n 'FLAG_SECURE' upstream/app/src/main/java/com/opencheps/overlay/{OverlayService,FloatingPanel}.java
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Create Gradle wrapper 8.7
+        working-directory: upstream
+        run: |
+          gradle wrapper --gradle-version 8.7 --distribution-type bin
+          chmod +x gradlew
+
+      - name: Download official Stockfish 19 ARM64 and verify checksum
+        run: |
+          set -euo pipefail
+          mkdir -p sf-cache/arm64
+          curl -fL --retry 3 -o sf-cache/arm64.tar.gz \
+            'https://github.com/official-stockfish/Stockfish/releases/download/sf_19/stockfish-android-arm64-universal.tar.gz'
+          echo "${SF19_ARM64_SHA}  sf-cache/arm64.tar.gz" | sha256sum -c -
+          tar -xzf sf-cache/arm64.tar.gz -C sf-cache/arm64
+          find sf-cache/arm64 -maxdepth 4 -type f -print
+          ARM64_BIN="$(find sf-cache/arm64 -type f -name '*stockfish*android*' ! -name '*.txt' | head -n 1)"
+          test -n "$ARM64_BIN"
+          file "$ARM64_BIN" | grep -q ELF
+          install -Dm755 "$ARM64_BIN" upstream/app/src/main/jniLibs/arm64-v8a/libstockfish.so
+
+      - name: Build Android ARM64 debug APK
+        working-directory: upstream
+        run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
+
+      - name: List APKs
+        run: find upstream/app/build/outputs/apk -name '*.apk' -type f -print -exec ls -lh {} \;
+
+      - name: Upload ARM64 APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Chess-External-arm64-debug
+          path: upstream/app/build/outputs/apk/debug/*arm64-v8a*.apk
+          if-no-files-found: error
