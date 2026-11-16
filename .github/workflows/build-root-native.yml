@@ -27,6 +27,9 @@ jobs:
           test "$(git -C platform rev-parse HEAD)" = "67d9745670053e223f73fc3b80d071e931040261"
           install -Dm644 native-root/main.cpp platform/examples/minimal_overlay/src/main.cpp
           sed -i '/examples\/minimal_overlay\/src\/draw.cpp/d' platform/CMakeLists.txt
+          python3 native-root/patch_touch_passthrough.py platform
+          grep -n 'EnableTouchPassthrough' platform/template/include/native_surface/ANativeWindowCreator.h
+          grep -n 'Touch passthrough configured' platform/examples/minimal_overlay/src/main.cpp
           grep -n 'examples/minimal_overlay/src/main.cpp' platform/CMakeLists.txt
           grep -n 'true);' platform/examples/minimal_overlay/src/main.cpp | tail -n 3
           grep -n 'flags |= 0x40' platform/template/include/native_surface/ANativeWindowCreator.h
@@ -64,7 +67,7 @@ jobs:
           readelf -d dist/chess-root-imgui-arm64 | tee -a dist/ELF_INFO.txt
           sha256sum dist/chess-root-imgui-arm64 | tee dist/SHA256SUMS
           cp native-root/README.md dist/README.md
-          (cd dist && zip -9 chess-root-imgui-arm64-v0.4.0-beta.zip chess-root-imgui-arm64 README.md ELF_INFO.txt SHA256SUMS)
+          (cd dist && zip -9 chess-root-imgui-arm64-v0.4.1-beta.zip chess-root-imgui-arm64 README.md ELF_INFO.txt SHA256SUMS)
 
       - name: Upload native ELF artifact
         uses: actions/upload-artifact@v4
@@ -78,15 +81,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          TAG=v0.4.0-root-imgui-beta.1
+          TAG=v0.4.1-root-imgui-beta.1
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$TAG" dist/chess-root-imgui-arm64 dist/chess-root-imgui-arm64-v0.4.0-beta.zip --repo "$GITHUB_REPOSITORY" --clobber
+            gh release upload "$TAG" dist/chess-root-imgui-arm64 dist/chess-root-imgui-arm64-v0.4.1-beta.zip --repo "$GITHUB_REPOSITORY" --clobber
           else
-            gh release create "$TAG" dist/chess-root-imgui-arm64 dist/chess-root-imgui-arm64-v0.4.0-beta.zip \
+            gh release create "$TAG" dist/chess-root-imgui-arm64 dist/chess-root-imgui-arm64-v0.4.1-beta.zip \
               --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" \
-              --title "Chess Root ImGui v0.4.0 beta — native ARM64 executable" \
+              --title "Chess Root ImGui v0.4.1 beta — touch passthrough fix (native ARM64 ELF)" \
               --prerelease \
-              --notes "Experimental ROOT C++ ARM64 executable (not an APK). Native Dear ImGui/OpenGL ES3 rendered through private SurfaceComposer APIs. Compatible with Chess Trainer browser-extension localhost bridge on 127.0.0.1:8765; prints a 12-hex pairing code. The compositor layer requests skipScreenshot. Screenshot and recording exclusion is NOT guaranteed on ColorOS or other OEMs; may be absent or appear as a black region. Requires su/root, Termux shell and Android private libgui symbol compatibility. No MediaProjection, no OS security patching, no bypass of recording detection. For offline study and permitted analysis. Based on the MIT-licensed YiJieqwq Android Native Overlay template and Dear ImGui."
+              --notes "Experimental ROOT C++ ARM64 executable (not an APK). Native Dear ImGui/OpenGL ES3 rendered through private SurfaceComposer APIs. Compatible with Chess Trainer browser-extension localhost bridge on 127.0.0.1:8765; prints a 12-hex pairing code. The compositor layer requests skipScreenshot. FIX: calls privileged SurfaceComposer Transaction::setTrustedOverlay(true), so the noninteractive layer does not trigger Android 12+ untrusted-touch occlusion blocking. If unavailable, the process exits rather than disabling Android security or blocking taps. Screenshot and recording exclusion is NOT guaranteed on ColorOS or other OEMs; may be absent or appear as a black region. Requires su/root, Termux shell and Android private libgui symbol compatibility. No MediaProjection, no OS security patching, no bypass of recording detection. For offline study and permitted analysis. Based on the MIT-licensed YiJieqwq Android Native Overlay template and Dear ImGui."
           fi
           gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json url,assets
