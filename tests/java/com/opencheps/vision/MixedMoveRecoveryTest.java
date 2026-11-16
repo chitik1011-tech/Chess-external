@@ -51,8 +51,12 @@ public class MixedMoveRecoveryTest {
         move(after,"f7","f6"); // pawn moves
         check(MixedMoveRecovery.matchingPlies(mixed,after,true,true),2,
                 "Nxg5 f6 (capture and quiet, missed intermediate screen)");
-        check(MixedMoveRecovery.matchingPlies(mixed,after,false,true),0,
-                "wrong side to move");
+        // Independent moves commute: the final position cannot establish
+        // which player moved first without observing the intermediate frame.
+        check(MixedMoveRecovery.matchingPlies(mixed,after,false,true),2,
+                "commuting capture and pawn push");
+        check(MixedMoveRecovery.matchingPlies(start,e4,false,true),0,
+                "single pawn move by wrong side");
         char[][] corrupt=copy(after);corrupt[6][1]='Q';
         check(MixedMoveRecovery.matchingPlies(mixed,corrupt,true,true),0,
                 "wrongly classified pawn must not be accepted");
