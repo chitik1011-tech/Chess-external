@@ -35,6 +35,23 @@ The `--y-offset` option adds a positive or negative number of **physical screen 
 
 The executable supports `--help` and `--port N` (default port 8765). No rooting modules, code injection into a browser, or Android app installation is necessary for this overlay itself.
 
+## Touch passthrough (v0.4.1)
+
+Version 0.4.0 can block touches on Android 12–15 when the native layer
+is considered an untrusted overlay. **Version 0.4.1 requests a trusted
+SurfaceComposer layer**, allowing taps on the underlying chess board.
+
+The ImGui drawing is display-only; it is NOT a touch target. If the ROM
+rejects the privileged trusted-layer operation, the program exits with
+`Touch passthrough unavailable` instead of showing a blocking overlay.
+
+Do not globally disable Android's `block_untrusted_touches` security feature.
+
+To replace an older running binary, first stop the old process in Termux,
+then copy the downloaded v0.4.1 binary over /data/local/tmp and launch it
+again. Old running processes keep the previous in-memory version until
+restarted.
+
 ## Screen recording limitation — important
 
 The surface is created with `skipScreenshot=true` and is positioned only over the chessboard. **This is a private OEM-dependent Android API**, not a promise of invisibility.
