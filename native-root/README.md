@@ -31,14 +31,34 @@ If the old Chess External APK is still running its bridge, **stop its browser se
 
 To set your own code: `--token 012345abcdef`.
 
-The `--y-offset` option adds a positive or negative number of **physical screen pixels** when the browser's toolbar causes the overlay to be vertically misaligned. The screen pixel scale comes from the viewport width sent by the extension.
+### Chessboard vertical alignment (v0.4.2)
+
+When the neon/arrow is drawn **two ranks above** the intended squares,
+v0.4.2 shifts the native layer **down by two board squares by default**.
+The correction is relative to the detected board width, so it works on
+different screen resolutions and browser zoom levels.
+
+```sh
+su -c '/data/local/tmp/chess-root-imgui-arm64 --y-squares 2 --y-offset 140'
+```
+
+* `--y-squares 2` — exactly **2 board squares down** (default in v0.4.2).
+* `--y-squares 1.5` — 1.5 squares down; negative values move up.
+* `--y-squares 0` — restores v0.4.1's original alignment.
+* `--y-offset 140` — add a separate **140 physical pixel** adjustment;
+  zero by default. Do not double-apply the correction if it is already aligned.
+
+The program prints its active offsets at startup. Restart it after changing
+arguments.
+
+The screen pixel scale comes from the viewport width sent by the extension.
 
 The executable supports `--help` and `--port N` (default port 8765). No rooting modules, code injection into a browser, or Android app installation is necessary for this overlay itself.
 
 ## Touch passthrough (v0.4.1)
 
 Version 0.4.0 can block touches on Android 12–15 when the native layer
-is considered an untrusted overlay. **Version 0.4.1 requests a trusted
+is considered an untrusted overlay. **Version 0.4.1 and newer request a trusted
 SurfaceComposer layer**, allowing taps on the underlying chess board.
 
 The ImGui drawing is display-only; it is NOT a touch target. If the ROM
