@@ -262,8 +262,8 @@ int main(int argc,char** argv){
     char* end=nullptr;
     const char* val=argv[++i];
     ySquares=std::strtof(val,&end);
-    if(end==val||*end!='\\0'||!std::isfinite(ySquares)||ySquares < -8.f||ySquares > 8.f){
-     std::fprintf(stderr,"--y-squares must be between -8 and 8\\n");return 2;
+    if(end==val||*end!='\0'||!std::isfinite(ySquares)||ySquares < -8.f||ySquares > 8.f){
+     std::fprintf(stderr,"--y-squares must be between -8 and 8\n");return 2;
     }
     continue;
    }
@@ -277,7 +277,7 @@ int main(int argc,char** argv){
  std::signal(SIGTERM,signalHandler);std::signal(SIGINT,signalHandler);
  std::printf("Chess Root ImGui | PID %d | pairing code: %s\n",getpid(),secret.c_str());
  std::printf("skipScreenshot requested; OEM may show black region in recordings.\n");
- std::printf("Alignment: %+0.2f squares vertically + %d physical pixels (positive = DOWN).\\n",
+ std::printf("Alignment: %+0.2f squares vertically + %d physical pixels (positive = DOWN).\n",
              ySquares,yOffset);
  std::fflush(stdout);
  auto display=android::ANativeWindowCreator::GetDisplayInfo();
