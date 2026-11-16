@@ -151,6 +151,8 @@ public final class BrowserBridgeService extends Service {
                 +"Content-Type: application/json; charset=utf-8\r\n"
                 +"Access-Control-Allow-Origin: *\r\n"
                 +"Access-Control-Allow-Headers: Content-Type\r\n"
+                +"Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n"
+                +"Access-Control-Allow-Private-Network: true\r\n"
                 +"Cache-Control: no-store\r\nConnection: close\r\n"
                 +"Content-Length: "+body.length+"\r\n\r\n";
         out.write(head.getBytes(StandardCharsets.US_ASCII));
@@ -158,10 +160,28 @@ public final class BrowserBridgeService extends Service {
         out.flush();
     }
 
+    /** Support browser localhost CORS/private-network preflight. */
+    private static void preflight(OutputStream out) throws Exception {
+        String head = "HTTP/1.1 204 No Content\r\n"
+                + "Access-Control-Allow-Origin: *\r\n"
+                + "Access-Control-Allow-Methods: POST, OPTIONS\r\n"
+                + "Access-Control-Allow-Headers: Content-Type\r\n"
+                + "Access-Control-Allow-Private-Network: true\r\n"
+                + "Access-Control-Max-Age: 600\r\n"
+                + "Content-Length: 0\r\n"
+                + "Connection: close\r\n\r\n";
+        out.write(head.getBytes(StandardCharsets.US_ASCII));
+        out.flush();
+    }
+
     private void handle(Socket sock) throws Exception {
         BufferedInputStream in=new BufferedInputStream(sock.getInputStream());
         OutputStream out=sock.getOutputStream();
         String req=readLine(in,512);
+        if(req.startsWith("OPTIONS /frame HTTP/1.")) {
+            preflight(out);
+            return;
+        }
         if("GET /health HTTP/1.1".equals(req)) {
             // Restrict body unauthenticated: just advertise that a bridge exists.
             reply(out,200,"bridge-online");return;
