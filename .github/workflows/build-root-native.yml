@@ -88,3 +88,5 @@ jobs:
               --title "Chess Root ImGui v0.4.0 beta — native ARM64 executable" \
               --prerelease \
               --notes "Experimental ROOT C++ ARM64 executable (not an APK). Native Dear ImGui/OpenGL ES3 rendered through private SurfaceComposer APIs. Compatible with Chess Trainer browser-extension localhost bridge on 127.0.0.1:8765; prints a 12-hex pairing code. The compositor layer requests skipScreenshot. Screenshot and recording exclusion is NOT guaranteed on ColorOS or other OEMs; may be absent or appear as a black region. Requires su/root, Termux shell and Android private libgui symbol compatibility. No MediaProjection, no OS security patching, no bypass of recording detection. For offline study and permitted analysis. Based on the MIT-licensed YiJieqwq Android Native Overlay template and Dear ImGui."
+          fi
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json url,assets
