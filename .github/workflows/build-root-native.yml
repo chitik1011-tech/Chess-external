@@ -1,0 +1,90 @@
+name: Build native root ImGui ARM64 ELF (no APK)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'native-root/**'
+      - '.github/workflows/build-root-native.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build-arm64:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout our native source
+        uses: actions/checkout@v4
+
+      - name: Setup pinned native SurfaceComposer ImGui runtime
+        run: |
+          set -euo pipefail
+          git clone https://github.com/YiJieqwq/Android-Native-Overlay.git platform
+          git -C platform checkout --detach 67d9745670053e223f73fc3b80d071e931040261
+          test "$(git -C platform rev-parse HEAD)" = "67d9745670053e223f73fc3b80d071e931040261"
+          install -Dm644 native-root/main.cpp platform/examples/minimal_overlay/src/main.cpp
+          sed -i '/examples\/minimal_overlay\/src\/draw.cpp/d' platform/CMakeLists.txt
+          grep -n 'examples/minimal_overlay/src/main.cpp' platform/CMakeLists.txt
+          grep -n 'true);' platform/examples/minimal_overlay/src/main.cpp | tail -n 3
+          grep -n 'flags |= 0x40' platform/template/include/native_surface/ANativeWindowCreator.h
+
+      - name: Configure Android NDK
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort | tail -n 1)"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" --install 'ndk;27.2.12479018' 'cmake;3.22.1'
+
+      - name: Configure Android ARM64/Bionic executable
+        run: |
+          set -euo pipefail
+          cmake -S platform -B platform/out -G Ninja \
+            -DCMAKE_SYSTEM_NAME=Android \
+            -DCMAKE_TOOLCHAIN_FILE="$ANDROID_HOME/ndk/27.2.12479018/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROID_PLATFORM=android-28 \
+            -DANDROID_STL=c++_static \
+            -DCMAKE_BUILD_TYPE=Release
+
+      - name: Compile standalone C++ ImGui ELF
+        run: cmake --build platform/out --target android_native_overlay -j 4
+
+      - name: Verify native executable format and package
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          install -m 755 platform/out/android_native_overlay dist/chess-root-imgui-arm64
+          file dist/chess-root-imgui-arm64 | tee dist/ELF_INFO.txt
+          file dist/chess-root-imgui-arm64 | grep -q 'ELF 64-bit.*ARM aarch64'
+          readelf -l dist/chess-root-imgui-arm64 | grep '/system/bin/linker64'
+          readelf -d dist/chess-root-imgui-arm64 | tee -a dist/ELF_INFO.txt
+          sha256sum dist/chess-root-imgui-arm64 | tee dist/SHA256SUMS
+          cp native-root/README.md dist/README.md
+          (cd dist && zip -9 chess-root-imgui-arm64-v0.4.0-beta.zip chess-root-imgui-arm64 README.md ELF_INFO.txt SHA256SUMS)
+
+      - name: Upload native ELF artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Chess-Root-ImGui-ARM64-ELF
+          path: dist/
+          if-no-files-found: error
+
+      - name: Publish GitHub prerelease with ELF binary
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG=v0.4.0-root-imgui-beta.1
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/chess-root-imgui-arm64 dist/chess-root-imgui-arm64-v0.4.0-beta.zip --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$TAG" dist/chess-root-imgui-arm64 dist/chess-root-imgui-arm64-v0.4.0-beta.zip \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "Chess Root ImGui v0.4.0 beta — native ARM64 executable" \
+              --prerelease \
+              --notes "Experimental ROOT C++ ARM64 executable (not an APK). Native Dear ImGui/OpenGL ES3 rendered through private SurfaceComposer APIs. Compatible with Chess Trainer browser-extension localhost bridge on 127.0.0.1:8765; prints a 12-hex pairing code. The compositor layer requests skipScreenshot. Screenshot and recording exclusion is NOT guaranteed on ColorOS or other OEMs; may be absent or appear as a black region. Requires su/root, Termux shell and Android private libgui symbol compatibility. No MediaProjection, no OS security patching, no bypass of recording detection. For offline study and permitted analysis. Based on the MIT-licensed YiJieqwq Android Native Overlay template and Dear ImGui."
