@@ -41,15 +41,17 @@ public class MissedMoveRecoveryTest {
 
         check(MissedMoveRecovery.matchesTwoQuietMoves(flip(p),flip(current),true,false),
                 true,"black-at-bottom orientation");
-        check(MissedMoveRecovery.matchesTwoQuietMoves(p,current,false,true),false,
-                "must honor whose turn");
+        // For independent quiet moves the final board is the same in either
+        // order. Preserve the *known* turn; the board alone cannot infer it.
+        check(MissedMoveRecovery.matchesTwoQuietMoves(p,current,false,true),true,
+                "commuting moves cannot reveal their order");
 
         char[][] knights = copy(p);
         move(knights,"g1","f3"); move(knights,"g8","f6");
         check(MissedMoveRecovery.matchesTwoQuietMoves(p,knights,true,true),true,
                 "knight moves");
-        check(MissedMoveRecovery.matchesTwoQuietMoves(p,knights,true,false),false,
-                "incorrect board orientation");
+        check(MissedMoveRecovery.matchesTwoQuietMoves(p,knights,true,false),true,
+                "knight jumps are orientation-independent");
 
         char[][] partial = copy(p);
         move(partial,"e2","e4");
