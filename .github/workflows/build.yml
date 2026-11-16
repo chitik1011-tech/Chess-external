@@ -39,6 +39,7 @@ jobs:
           python3 scripts/patch_runtime.py upstream
           install -Dm644 patches/MissedMoveRecovery.java upstream/app/src/main/java/com/opencheps/vision/MissedMoveRecovery.java
           python3 scripts/patch_recovery.py upstream
+          python3 scripts/patch_classifier.py upstream
           grep -n 'FLAG_SECURE' upstream/app/src/main/java/com/opencheps/overlay/{OverlayService,FloatingPanel}.java
           grep -n 'getLocationOnScreen\|recalibrate if persistent\|lastPvs' upstream/app/src/main/java/com/opencheps/{overlay/ArrowOverlayView,capture/ScreenCaptureService}.java
 
@@ -53,6 +54,11 @@ jobs:
           mkdir -p /tmp/chess-test-classes
           javac -d /tmp/chess-test-classes patches/MissedMoveRecovery.java tests/java/MissedMoveRecoveryTest.java
           java -cp /tmp/chess-test-classes com.opencheps.vision.MissedMoveRecoveryTest
+          javac -d /tmp/chess-test-classes \
+            tests/java/android/graphics/Bitmap.java \
+            upstream/app/src/main/java/com/opencheps/vision/SquareSampler.java \
+            tests/java/com/opencheps/vision/SquareSamplerTest.java
+          java -cp /tmp/chess-test-classes com.opencheps.vision.SquareSamplerTest
 
       - name: Configure Android SDK from GitHub runner
         run: |
