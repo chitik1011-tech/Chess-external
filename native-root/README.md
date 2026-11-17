@@ -55,6 +55,24 @@ The screen pixel scale comes from the viewport width sent by the extension.
 
 The executable supports `--help` and `--port N` (default port 8765). No rooting modules, code injection into a browser, or Android app installation is necessary for this overlay itself.
 
+## Three Stockfish moves (v0.4.3)
+
+With Chess Trainer browser extension **v0.9.2 or newer**, enable the
+**3 хода: идеальный / хороший / плохой** switch. The extension sends
+`move`, `goodMove`, `badMove` and `threeMode` through the same local
+authenticated HTTP bridge. Root Dear ImGui now renders **three** ranked
+suggestions: green BEST, cyan GOOD, red WEAK, including both arrow and
+neon-square modes. The best is always drawn last/on top.
+
+The "bad" category is relative to the engine analysis; if no line loses
+at least 1.5 pawns it is explicitly labelled the *weakest evaluated option*
+in the extension panel. Stockfish's MultiPV 12 is not a full enumeration
+of every legal move.
+
+The bridge remains backward compatible with older extensions (one move).
+For Android 15/ColorOS 15, passthrough and screenshot exclusion still
+depend on private SurfaceComposer behavior; test on your device.
+
 ## Touch passthrough (v0.4.1)
 
 Version 0.4.0 can block touches on Android 12–15 when the native layer
