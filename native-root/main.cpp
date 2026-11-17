@@ -38,7 +38,8 @@ int port=8765,yOffset=0;
 float ySquares=2.f;
 bool demo=false;
 struct Data {
- std::string move,mode="arrow",effect,lastEffectMove;
+ std::string move,goodMove,badMove,mode="arrow",effect,lastEffectMove;
+ bool threeMode=false;
  int quality=100,speed=100;
  bool flipped=false;
  float x=0,y=0,width=0,height=0,viewportW=0;
@@ -131,7 +132,14 @@ void client(int fd){
  if(str(json,"token")!=secret){reply(fd,403,"bad-pair-code");return;}
  Data next;
  next.move=str(json,"move");
- if(!validMove(next.move)){reply(fd,400,"bad-move");return;}
+ next.goodMove=str(json,"goodMove");
+ next.badMove=str(json,"badMove");
+ next.threeMode=boolean(json,"threeMode");
+ if(!validMove(next.move) || !validMove(next.goodMove) || !validMove(next.badMove)) {
+  reply(fd,400,"bad-move");return;
+ }
+ if(next.goodMove==next.move)next.goodMove.clear();
+ if(next.badMove==next.move || next.badMove==next.goodMove)next.badMove.clear();
  next.mode=str(json,"mode");next.effect=str(json,"event");
  if(!next.effect.empty()&&next.effect!="capture"&&next.effect!="check"&&next.effect!="mate"){
   reply(fd,400,"bad-event");return;
@@ -173,35 +181,41 @@ ImVec2 point(const std::string& square,bool flip){
  int x=square[0]-'a',y=square[1]-'1';
  return ImVec2((flip?7-x:x)+.5f,(flip?y:7-y)+.5f);
 }
-void paintHint(ImDrawList* d,const Data& f){
+void paintHint(ImDrawList* d,const Data& f,int rank=1){
  if(f.move.size()<4)return;
+ const ImU32 col=rank==1?IM_COL32(58,255,170,255):
+    rank==2?IM_COL32(73,201,255,255):IM_COL32(255,97,122,255);
+ const ImU32 faint=rank==1?IM_COL32(40,250,174,48):
+    rank==2?IM_COL32(73,201,255,44):IM_COL32(255,97,122,48);
  ImVec2 a=point(f.move.substr(0,2),f.flipped),b=point(f.move.substr(2,2),f.flipped);
  float u=SIZE/8.f;a.x*=u;a.y*=u;b.x*=u;b.y*=u;
  if(f.mode=="neon"){
   for(int i=0;i<2;i++){
    ImVec2 p=i?b:a;float pad=13;
-   ImU32 color=i?IM_COL32(55,255,164,246):IM_COL32(70,195,255,240);
+   ImU32 color=i?col:(rank==1?IM_COL32(70,195,255,240):col);
    d->AddRectFilled({p.x-u/2+pad,p.y-u/2+pad},{p.x+u/2-pad,p.y+u/2-pad},
-                    i?IM_COL32(40,255,171,55):IM_COL32(55,144,255,45),12.f);
+                    faint,12.f);
    d->AddRect({p.x-u/2+pad,p.y-u/2+pad},{p.x+u/2-pad,p.y+u/2-pad},color,12.f,0,7.f);
   }
  } else {
   float dx=b.x-a.x,dy=b.y-a.y,m=std::sqrt(dx*dx+dy*dy);
   if(m>1){
    float ux=dx/m,uy=dy/m;ImVec2 tip(b.x-ux*21,b.y-uy*21);
-   d->AddLine(a,tip,IM_COL32(26,242,174,42),28);
-   d->AddLine(a,tip,IM_COL32(50,250,185,255),10);
+   d->AddLine(a,tip,faint,28);
+   d->AddLine(a,tip,col,10);
    d->AddTriangleFilled(tip,{tip.x-ux*43-uy*17,tip.y-uy*43+ux*17},
-                            {tip.x-ux*43+uy*17,tip.y-uy*43-ux*17},IM_COL32(50,250,185,255));
+                            {tip.x-ux*43+uy*17,tip.y-uy*43-ux*17},col);
   }
  }
- std::string text=std::to_string(f.quality)+"%";
+ std::string text=rank==1?"1 BEST "+std::to_string(f.quality)+"%":
+     rank==2?"2 GOOD":"3 WEAK";
  if(f.move.size()==5){text+=" =";text+=(char)std::toupper((unsigned char)f.move[4]);}
  ImVec2 ts=ImGui::CalcTextSize(text.c_str());
- float tx=std::clamp(b.x,ts.x/2+14,(float)SIZE-ts.x/2-14),ty=std::max(34.f,b.y-u*.65f);
+ float tx=std::clamp(b.x,ts.x/2+14,(float)SIZE-ts.x/2-14);
+ float ty=std::max(34.f,b.y-u*(.60f+(rank-1)*.26f));
  d->AddRectFilled({tx-ts.x/2-15,ty-ts.y-9},{tx+ts.x/2+15,ty+9},IM_COL32(8,35,34,240),10);
- d->AddRect({tx-ts.x/2-15,ty-ts.y-9},{tx+ts.x/2+15,ty+9},IM_COL32(50,255,183,220),10,0,2);
- d->AddText({tx-ts.x/2,ty-ts.y},IM_COL32_WHITE,text.c_str());
+ d->AddRect({tx-ts.x/2-15,ty-ts.y-9},{tx+ts.x/2+15,ty+9},col,10,0,2);
+ d->AddText({tx-ts.x/2,ty-ts.y},col,text.c_str());
 }
 void paintFx(ImDrawList* d,const Data& f,long long now){
  std::string m=f.lastEffectMove.empty()?f.move:f.lastEffectMove;
@@ -315,7 +329,15 @@ int main(int argc,char** argv){
   gfx->NewFrame(false);
   if(showing){
    ImDrawList* d=ImGui::GetBackgroundDrawList();
-   if(fresh)paintHint(d,f);
+   if(fresh){
+    // Render in reverse importance so the best line stays visible on top.
+    if(f.threeMode){
+     Data alternate=f;
+     if(!f.badMove.empty()){alternate.move=f.badMove;paintHint(d,alternate,3);}
+     if(!f.goodMove.empty()){alternate.move=f.goodMove;paintHint(d,alternate,2);}
+    }
+    paintHint(d,f,1);
+   }
    if(fx)paintFx(d,f,now);
   }
   gfx->EndFrame();
